@@ -1,0 +1,83 @@
+openapi: "3.0.0"
+info:
+  version: 0.0.1
+  title: Image Recognition API
+  license:
+    name: MIT
+paths:
+  /blobs:
+    post:
+      summary: Creates a presigned URL to upload the image to be recognized.
+      operationId: postBlob
+      parameters:
+        - name: callback_url
+          in: query
+          required: false
+          description: Where to POST the response when the operation is complete. Must be encoded.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expected response to a valid request. Contains the blob id and the presigned URL.
+          content:
+            application/json:
+              "#/components/schemas/Blob"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /blobs/{blob_id}:
+    get:
+      summary: Retrieves blob information, including labels after the operation is complete.
+      operationId: getBlob
+      parameters:
+        - name: blob_id
+          in: path
+          required: true
+          description: The id of the blob to retrieve
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expected response to a valid request. Contains all the information about the blob that is available when requested.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Blob"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    Blob:
+      type: object
+      required:
+        - id
+        - presigned_url
+      properties:
+        id:
+          type: string
+          format: uuid
+        presigned_url:
+          type: string
+        callback_url:
+          type: string
+        labels:
+          type: object
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string

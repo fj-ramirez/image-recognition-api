@@ -1,0 +1,83 @@
+service: image-recognition-api
+
+frameworkVersion: '2'
+
+custom:
+    stage: ${opt:stage, self:provider.stage}
+    table_name: ${self:custom.stage}-blob
+    s3_bucket: img-rcg-api-${self:custom.stage}-bucket
+    s3_key_base: ${opt:s3_key_base, self:custom.stage}
+    s3_bucket_arn: arn:aws:s3:::${self:custom.s3_bucket}
+    s3_role_resource: ${self:custom.s3_bucket_arn}/${self:custom.s3_key_base}/*
+provider:
+  name: aws
+  runtime: python3.8
+  lambdaHashingVersion: 20201221
+  stage: dev
+  region: us-east-1
+  apiGateway:
+    shouldStartNameWithService: true
+  environment:
+    table_name: ${self:custom.table_name}
+    s3_bucket: ${self:custom.s3_bucket}
+    #fill access key
+    aws_access_key_id: 
+    #fill secret key
+    aws_secret_access_key: 
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:DescribeStream
+        - dynamodb:GetRecords
+        - dynamodb:GetShardIterator
+        - dynamodb:ListStreams
+      Resource:
+        - "Fn::GetAtt": [ BlobTable, Arn ]
+    - Effect: "Allow"
+      Action:
+        - s3:*
+      Resource:  ${self:custom.s3_role_resource}
+    - Effect: "Allow"
+      Action:
+        - "rekognition:*"
+      Resource: "*"
+
+functions:
+  post_blob:
+    handler: handler.post_blob
+    events:
+      - http:
+          method: post
+          path: /blobs
+          cors: true
+  get_blob:
+    handler: handler.get_blob
+    events:
+      - http:
+          method: get
+          path: /blobs/{blob_id}
+          cors: true
+  rekognition_on_s3_upload:
+    handler: handler.rekognition_on_s3_upload
+    events:
+      - s3:
+          bucket: ${self:provider.environment.s3_bucket}
+          event: s3:ObjectCreated:*
+          existing: true
+  make_callback:
+    handler: handler.make_callback
+    events:
+      - stream: 
+          type: dynamodb
+          arn:
+            Fn::GetAtt: [ BlobTable, StreamArn ]
+resources:
+  - ${file(resources/blob_table.yml)}
+  - ${file(resources/blob_bucket.yml)}

@@ -1,0 +1,14 @@
+Resources:
+  BlobTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ${self:custom.table_name}
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
